@@ -1,22 +1,30 @@
 # Alpine como a imagem mais limpa
-FROM alpine:3.14
+FROM php:8.1-fpm-alpine3.15
 # Informações
 LABEL maintainer="devs@convenia.com.br"
 LABEL company="Convenia"
 # Chave para construir uma imagem de desenvolvimento ou produção
 ARG ENVIRONMENT=development
 # Instalação de pacotes
-RUN apk --update add php8 php8-common php8-fpm php8-bcmath php8-bz2 php8-calendar php8-ctype php8-exif php8-gd php8-gettext php8-gmp php8-mysqlnd \
-    php8-opcache php8-pcntl php8-pdo_mysql php8-pdo_sqlite php8-phar php8-sockets php8-xsl php8-zip \
-    php8-pecl-igbinary php8-pecl-xdebug php8-pecl-redis php8-pecl-mongodb \
-    sqlite git openssh curl zip unzip
-# Executável como somente 'php'
-RUN ln -s /usr/bin/php8 /usr/bin/php
+RUN apk --update add git
+# Instalação do php ext installer (https://github.com/mlocati/docker-php-extension-installer)
+COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
+# Instalação de pacotes
+RUN IPE_GD_WITHOUTAVIF=1 install-php-extensions bcmath bz2 calendar exif gd gettext gmp opcache pcntl \
+    pdo_mysql sockets xsl zip \
+    igbinary-stable \
+    redis-stable \
+    mongodb-stable \
+    xdebug-stable
 # Instalação do composer
-COPY convenia/php/getcomposer.sh /tmp/
-RUN sh /tmp/getcomposer.sh && rm /tmp/getcomposer.sh
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 # Configuração específica da Convenia
-COPY convenia/php/convenia-${ENVIRONMENT}.ini /etc/php8/conf.d/99_convenia.ini
+COPY convenia/php/convenia-${ENVIRONMENT}.ini /usr/local/etc/php/conf.d/99_convenia.ini
+COPY convenia/fpm/docker-${ENVIRONMENT}.conf /usr/local/etc/php-fpm.d/docker.conf
+COPY convenia/fpm/www-${ENVIRONMENT}.conf /usr/local/etc/php-fpm.d/www.conf
+# Cria usuário e grupo app
+RUN addgroup -S -g 1000 app && adduser -u 1000 -G app -D app
 # Portas padrão do FPM e XDebug
+WORKDIR /var/www
 EXPOSE 9000 9003
-CMD ["php-fpm8","-F"]
+CMD ["php-fpm","-F"]
