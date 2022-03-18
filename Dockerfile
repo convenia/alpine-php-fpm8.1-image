@@ -1,5 +1,5 @@
 # Alpine como a imagem mais limpa
-FROM php:8.1-fpm-alpine3.15
+FROM php:8.1.4-fpm-alpine3.15
 # Informações
 LABEL maintainer="devs@convenia.com.br"
 LABEL company="Convenia"
@@ -15,7 +15,8 @@ RUN IPE_GD_WITHOUTAVIF=1 install-php-extensions bcmath bz2 calendar exif gd gett
     igbinary-stable \
     redis-stable \
     mongodb-stable \
-    xdebug-stable
+    xdebug-stable \
+    imagick-stable
 # Instalação do composer
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 # Configuração específica da Convenia
@@ -25,6 +26,6 @@ COPY convenia/fpm/www-${ENVIRONMENT}.conf /usr/local/etc/php-fpm.d/www.conf
 # Cria usuário e grupo app
 RUN addgroup -S -g 1000 app && adduser -u 1000 -G app -D app
 # Portas padrão do FPM e XDebug
-WORKDIR /var/www
 EXPOSE 9000 9003
+WORKDIR /var/www
 CMD ["php-fpm","-F"]
